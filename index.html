@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simone Pães e Doces — Plataforma de Produção v2.7</title>
+<title>Simone Pães e Doces — Plataforma de Produção v2.8</title>
 <style>
 :root{--bg:#f8f7f6;--card:#fff;--text:#3f302d;--muted:#786b67;--line:#eadfdb;--accent:#b52f2f;--danger:#c73b3b;--warn:#c77719;--ok:#2f8b59}
 *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
@@ -164,7 +164,7 @@ function reconciliarOrdensGeradas(){
   // Somente ordens ainda abertas impedem uma nova ordem para o mesmo item.
   produtos.forEach(p=>p.ordemGerada=false);
   ordens.forEach(o=>{
-    if(o.origemPlanejamento && o.status!=='Conferido'){
+    if(o.origemPlanejamento && o.status!=='Conferido' && (!o.dataISO || o.dataISO===hojeISO())){
       const p=produtos.find(x=>(x.loja||'LOJA 1')===(o.loja||'LOJA 1') && x.categoria===(o.categoria||'') && x.produto===o.produto);
       if(p)p.ordemGerada=true;
     }
@@ -203,10 +203,13 @@ function proximaOrdemNumero(){
  return String(n).padStart(4,'0');
 }
 function existeOrdemAberta(p){
- // A tela consulta as ORDENS reais; não confia mais em uma marca antiga salva no produto.
+ // Só uma ordem ABERTA DE HOJE bloqueia uma nova geração.
+ // Ordens antigas pendentes continuam no histórico, mas não deixam o Planejamento travado como "ORDEM JÁ GERADA".
  const chave=produtoChave(p);
+ const hoje=hojeISO();
  return ordens.some(o=>{
    if(o.status==='Conferido')return false;
+   if(o.dataISO && o.dataISO!==hoje)return false;
    const chaveOrdem=o.produtoChave || `${o.loja||'LOJA 1'}||${o.categoria||''}||${o.produto}`;
    return chaveOrdem===chave;
  });
