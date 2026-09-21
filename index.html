@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Simone Pães e Doces — Plataforma de Produção v2.6</title>
+<title>Simone Pães e Doces — Plataforma de Produção v2.7</title>
 <style>
 :root{--bg:#f8f7f6;--card:#fff;--text:#3f302d;--muted:#786b67;--line:#eadfdb;--accent:#b52f2f;--danger:#c73b3b;--warn:#c77719;--ok:#2f8b59}
 *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
@@ -202,13 +202,22 @@ function proximaOrdemNumero(){
  const n=nums.length?Math.max(...nums)+1:1;
  return String(n).padStart(4,'0');
 }
+function existeOrdemAberta(p){
+ // A tela consulta as ORDENS reais; não confia mais em uma marca antiga salva no produto.
+ const chave=produtoChave(p);
+ return ordens.some(o=>{
+   if(o.status==='Conferido')return false;
+   const chaveOrdem=o.produtoChave || `${o.loja||'LOJA 1'}||${o.categoria||''}||${o.produto}`;
+   return chaveOrdem===chave;
+ });
+}
 function renderPlanejamento(){
- // Mostra SEMPRE os itens abaixo do mínimo. Se já houver OP aberta, mantém a quantidade visível e bloqueia apenas uma OP duplicada.
+ // Mostra SEMPRE os itens abaixo do mínimo. Só bloqueia quando existe uma OP realmente aberta para o item.
  const list=produtos.filter(p=>p.loja===lojaEstoqueAtual&&Number(p.atual)<Number(p.min));
  document.getElementById('tabelaPlanejamento').innerHTML=list.length?list.map(p=>{
    const atual=Number(p.atual)||0,min=Number(p.min)||0,max=Number(p.max)||0;
    const sugerida=Math.max(0,max-atual);
-   const acao=p.ordemGerada
+   const acao=existeOrdemAberta(p)
      ? '<span class="badge warn">ORDEM JÁ GERADA</span>'
      : `<button class="primary" onclick='criarOrdem(${JSON.stringify(produtoChave(p))})'>Gerar ordem</button>`;
    return `<tr><td><b>${p.produto}</b><div class="small">${p.categoria} • ${p.loja}</div></td><td>${atual}</td><td>${min}</td><td>${max}</td><td><b>${sugerida}</b></td><td>${acao}</td></tr>`;
@@ -217,7 +226,7 @@ function renderPlanejamento(){
 function criarOrdem(chave){
  const partes=String(chave).split('||');const loja=partes[0],categoria=partes[1],produto=partes.slice(2).join('||');
  const p=produtos.find(x=>x.loja===loja&&x.categoria===categoria&&x.produto===produto);if(!p)return alert('Produto não encontrado.');
- if(p.ordemGerada)return alert('Já existe uma ordem aberta para este produto.');
+ if(existeOrdemAberta(p))return alert('Já existe uma ordem aberta para este produto.');
  const q=Math.max(0,(Number(p.max)||0)-(Number(p.atual)||0));if(!q)return alert('Defina o estoque máximo acima do estoque atual.');p.ordemGerada=true;
  const responsavel=prompt(`Quem será responsável por produzir ${p.produto} para ${p.loja}? (pode deixar em branco)`,'')||'';
  ordens.push({numero:proximaOrdemNumero(),loja:p.loja,produto:p.produto,categoria:p.categoria,quantidade:q,data:new Date().toLocaleDateString('pt-BR'),dataISO:hojeISO(),responsavel:responsavel.trim(),status:'Pendente',origemPlanejamento:true,produtoChave:produtoChave(p)});
